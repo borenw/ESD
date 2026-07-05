@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESD Damage — First Principles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12161D; --muted:#5C6573; --faint:#8A94A3;
+    --paper:#F4F6F9; --panel:#FFFFFF; --line:#DCE1E9; --line2:#EAEEF3;
+    --volt:#2F6BFF; --volt-soft:#E6EEFF; --volt-ink:#1B47B8;
+    --curr:#E8590C; --curr-soft:#FCEADD; --curr-ink:#B23E04;
+    --both:#7A53D1; --both-soft:#EFE9FB;
+    --ok:#1F9D6B; --warn:#D98A00;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --disp:'Space Grotesk',system-ui,sans-serif;
+    --body:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);
+    font-size:15.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  a{color:var(--volt-ink);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---------- shell ---------- */
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+  .layout{display:grid;grid-template-columns:230px 1fr;gap:38px;align-items:start}
+  @media(max-width:900px){.layout{grid-template-columns:1fr;gap:0}}
+
+  /* ---------- top bar ---------- */
+  header.top{position:sticky;top:0;z-index:50;background:rgba(244,246,249,.86);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:54px}
+  .brand{font-family:var(--disp);font-weight:700;letter-spacing:-.01em;font-size:15px}
+  .brand .dotV{color:var(--volt)} .brand .dotI{color:var(--curr)}
+  .top .meta{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+
+  /* ---------- hero ---------- */
+  .hero{padding:56px 0 30px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--faint);margin-bottom:16px}
+  h1{font-family:var(--disp);font-weight:700;font-size:clamp(34px,5vw,56px);line-height:1.02;
+    letter-spacing:-.025em;margin:0 0 18px}
+  h1 .v{color:var(--volt)} h1 .i{color:var(--curr)}
+  .lede{font-size:18px;color:var(--muted);max-width:62ch;margin:0}
+  .lede b{color:var(--ink);font-weight:600}
+
+  /* duality figure */
+  .duality{margin:34px 0 8px;border:1px solid var(--line);border-radius:14px;background:var(--panel);
+    overflow:hidden}
+  .duality svg{display:block;width:100%;height:auto}
+
+  /* ---------- side nav ---------- */
+  nav.side{position:sticky;top:74px;font-size:13.5px;padding-top:54px}
+  @media(max-width:900px){nav.side{position:static;padding-top:0}}
+  nav.side .navtitle{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--faint);margin:0 0 12px}
+  nav.side ol{list-style:none;margin:0;padding:0;counter-reset:nav}
+  nav.side li{counter-increment:nav;margin:2px 0}
+  nav.side a{display:block;color:var(--muted);padding:5px 10px 5px 30px;border-radius:7px;position:relative}
+  nav.side a:hover{background:var(--panel);color:var(--ink);text-decoration:none}
+  nav.side a::before{content:counter(nav,decimal-leading-zero);position:absolute;left:8px;top:5px;
+    font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  nav.side a.active{background:var(--panel);color:var(--ink);box-shadow:inset 2px 0 0 var(--volt)}
+
+  /* ---------- top index card (explicit contents) ---------- */
+  .toc{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:24px 26px;margin:10px 0 50px}
+  .toc h2{font-family:var(--disp);font-size:14px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--faint);margin:0 0 16px;font-weight:600}
+  .toc ol{list-style:none;margin:0;padding:0;counter-reset:c;
+    display:grid;grid-template-columns:1fr 1fr;gap:4px 34px}
+  @media(max-width:640px){.toc ol{grid-template-columns:1fr}}
+  .toc>ol>li{counter-increment:c;padding:9px 0;border-top:1px solid var(--line2)}
+  .toc>ol>li:first-child,.toc>ol>li:nth-child(2){border-top:none}
+  .toc a.ch{font-family:var(--disp);font-weight:600;font-size:15.5px;color:var(--ink)}
+  .toc a.ch::before{content:counter(c,decimal-leading-zero);font-family:var(--mono);
+    font-size:12px;color:var(--volt);margin-right:10px}
+  .toc .sub{margin:6px 0 0 34px;padding:0;list-style:none;font-size:13px}
+  .toc .sub a{color:var(--muted)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;scroll-margin-top:70px;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:none}
+  .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--faint);margin-bottom:8px}
+  h2.sec{font-family:var(--disp);font-weight:700;font-size:clamp(23px,3vw,31px);letter-spacing:-.02em;
+    margin:0 0 6px;line-height:1.1}
+  h3{font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:-.01em;margin:26px 0 10px}
+  p{margin:0 0 14px;max-width:74ch}
+  .small{font-size:13px;color:var(--muted)}
+
+  /* channel chips */
+  .chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;
+    font-weight:600;padding:3px 9px;border-radius:999px;letter-spacing:.03em;white-space:nowrap;vertical-align:middle}
+  .chip.v{background:var(--volt-soft);color:var(--volt-ink)}
+  .chip.i{background:var(--curr-soft);color:var(--curr-ink)}
+  .chip.b{background:var(--both-soft);color:var(--both)}
+  .chip .gl{width:7px;height:7px;border-radius:50%}
+  .chip.v .gl{background:var(--volt)} .chip.i .gl{background:var(--curr)} .chip.b .gl{background:var(--both)}
+
+  /* two root-cause panels */
+  .roots{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:22px 0 4px}
+  @media(max-width:760px){.roots{grid-template-columns:1fr}}
+  .root{border:1px solid var(--line);border-radius:14px;padding:22px;background:var(--panel)}
+  .root.v{border-top:3px solid var(--volt)} .root.i{border-top:3px solid var(--curr)}
+  .root .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+  .root h3{margin:6px 0 4px}
+  .root .law{font-family:var(--mono);font-size:13px;background:var(--paper);border:1px solid var(--line2);
+    border-radius:8px;padding:8px 11px;margin:12px 0;display:inline-block;color:var(--ink)}
+  .root ul{margin:6px 0 0;padding-left:18px;font-size:14px;color:var(--muted)}
+  .root li{margin:5px 0}
+
+  /* tables */
+  .tablecard{border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden;margin:18px 0}
+  .tablecard .cap{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    padding:14px 18px;border-bottom:1px solid var(--line2)}
+  .tablecard .cap .t{font-family:var(--disp);font-weight:600;font-size:14.5px}
+  .tablecard .cap .n{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line2);vertical-align:top}
+  thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--faint);font-weight:600;background:var(--paper);position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#FBFCFE}
+  td.mech{font-weight:600;font-family:var(--disp);white-space:nowrap}
+  td.mono,.num{font-family:var(--mono);font-size:12.5px}
+  .sev{font-family:var(--mono);font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;display:inline-block}
+  .sev.hi{background:#FCE3E0;color:#B3261E} .sev.md{background:#FCEFD6;color:#9A6700}
+  .sev.lo{background:#E7F3EC;color:#1F7A52} .sev.na{background:#EEF1F5;color:#8A94A3}
+
+  /* numeric bar cell */
+  .bar{display:flex;align-items:center;gap:9px;min-width:150px}
+  .bar .track{flex:1;height:9px;background:var(--line2);border-radius:5px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:5px}
+  .bar .val{font-family:var(--mono);font-size:12px;min-width:46px;text-align:right}
+
+  /* model table layout w/ pie */
+  .modelgrid{display:grid;grid-template-columns:240px 1fr;gap:22px;align-items:center}
+  @media(max-width:760px){.modelgrid{grid-template-columns:1fr}}
+  .piewrap{text-align:center;padding:18px}
+  .piewrap svg{max-width:210px;width:100%;height:auto}
+  .pielegend{margin-top:10px;display:flex;flex-direction:column;gap:5px;font-size:12px;text-align:left}
+  .pielegend .row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+  .pielegend .row .lk{display:flex;align-items:center;gap:7px}
+  .pielegend .sw{width:10px;height:10px;border-radius:3px}
+  .pielegend .pct{font-family:var(--mono);color:var(--muted)}
+  .pietitle{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+
+  /* callout */
+  .note{border-left:3px solid var(--volt);background:var(--volt-soft);border-radius:0 10px 10px 0;
+    padding:14px 18px;margin:18px 0;font-size:14px}
+  .note.i{border-left-color:var(--curr);background:var(--curr-soft)}
+  .note b{font-weight:600}
+
+  /* SV mapping cards */
+  .svmap{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  @media(max-width:760px){.svmap{grid-template-columns:1fr}}
+  .svcard{border:1px solid var(--line);border-radius:13px;padding:18px;background:var(--panel)}
+  .svcard h3{margin:8px 0 6px;font-size:16px}
+  .svcard p{font-size:13.5px;color:var(--muted);margin:0 0 8px}
+  .pinrow{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--paper);
+    border:1px solid var(--line2);border-radius:7px;padding:7px 10px;margin-bottom:10px}
+
+  /* refs */
+  .refs{list-style:none;padding:0;margin:8px 0 0}
+  .refs li{padding:11px 0;border-top:1px solid var(--line2);display:flex;gap:14px;align-items:baseline}
+  .refs li:first-child{border-top:none}
+  .refs .tag{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--faint);min-width:78px}
+  .refs .src{font-size:14px}
+  .refs .src .pub{display:block;font-size:12px;color:var(--faint);margin-top:2px;word-break:break-all}
+
+  footer{padding:40px 0 60px;color:var(--faint);font-size:12.5px;font-family:var(--mono)}
+  .legendbar{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:14px 0 0}
+  .legendbar span{display:inline-flex;align-items:center;gap:7px}
+  .legendbar .d{width:10px;height:10px;border-radius:50%}
+  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <div class="brand">ESD Damage<span class="dotV">·</span>First Principles<span class="dotI">.</span></div>
+  <div class="meta">VR / multiphase-buck ESD debug · rev A</div>
+</div></header>
+
+<div class="wrap">
+<div class="layout">
+
+  <!-- SIDE NAV -->
+  <nav class="side">
+    <p class="navtitle">Sections</p>
+    <ol>
+      <li><a href="#split">Two root causes</a></li>
+      <li><a href="#models">Stress models &amp; current</a></li>
+      <li><a href="#ov">Over-voltage mechanisms</a></li>
+      <li><a href="#oc">Over-current mechanisms</a></li>
+      <li><a href="#matrix">Mechanism × model matrix</a></li>
+      <li><a href="#debug">Signature → debug</a></li>
+      <li><a href="#sv">Mapping to SV* pins</a></li>
+      <li><a href="#refs">Diagrams &amp; references</a></li>
+    </ol>
+  </nav>
+
+  <!-- MAIN -->
+  <main>
+    <div class="hero">
+      <div class="eyebrow">First-principles teardown</div>
+      <h1>Every ESD kill is either<br><span class="v">over-voltage</span> or <span class="i">over-current</span>.</h1>
+      <p class="lede">An ESD event dumps a fixed packet of charge into a node. Silicon dies in exactly two ways depending on how that charge is spent: the transient <b>field</b> ruptures a dielectric before current can flow, or the transient <b>current</b> heats a junction or conductor until it melts. Fast events favor the first channel, slow/high-energy events the second. Everything below is organized around that split.</p>
+
+      <!-- DUALITY SIGNATURE FIGURE -->
+      <div class="duality" role="img" aria-label="Two damage channels: over-voltage field rupture versus over-current thermal melt, meeting at a pin.">
+        <svg viewBox="0 0 920 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="vg" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#2F6BFF" stop-opacity="0"/><stop offset="1" stop-color="#2F6BFF" stop-opacity="0.16"/>
+            </linearGradient>
+            <linearGradient id="ig" x1="1" y1="0" x2="0" y2="0">
+              <stop offset="0" stop-color="#E8590C" stop-opacity="0"/><stop offset="1" stop-color="#E8590C" stop-opacity="0.16"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="460" height="300" fill="url(#vg)"/>
+          <rect x="460" y="0" width="460" height="300" fill="url(#ig)"/>
+          <!-- center pin/pad -->
+          <rect x="442" y="120" width="36" height="36" rx="4" fill="#fff" stroke="#12161D" stroke-width="2"/>
+          <line x1="448" y1="126" x2="472" y2="150" stroke="#12161D" stroke-width="1.5"/>
+          <line x1="448" y1="150" x2="472" y2="126" stroke="#12161D" stroke-width="1.5"/>
+          <text x="460" y="178" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#5C6573">PAD</text>
+          <line x1="460" y1="40" x2="460" y2="120" stroke="#DCE1E9" stroke-width="2"/>
+          <line x1="460" y1="156" x2="460" y2="260" stroke="#DCE1E9" stroke-width="2"/>
+
+          <!-- LEFT: voltage / field rupture -->
+          <text x="40" y="48" font-family="Space Grotesk,sans-serif" font-size="17" font-weight="700" fill="#1B47B8">OVER-VOLTAGE</text>
+          <text x="40" y="68" font-family="IBM Plex Mono,monospace" font-size="11" fill="#5C6573">E = V / d  &gt;  E_crit  (~6–10 MV/cm SiO₂)</text>
+          <!-- oxide stack with filament -->
+          <rect x="120" y="200" width="220" height="14" fill="#cfd8e6"/>
+          <rect x="120" y="214" width="220" height="22" fill="#2F6BFF" opacity="0.18"/>
+          <rect x="120" y="236" width="220" height="14" fill="#cfd8e6"/>
+          <text x="120" y="196" font-family="IBM Plex Mono,monospace" font-size="10" fill="#5C6573">gate</text>
+          <text x="345" y="230" font-family="IBM Plex Mono,monospace" font-size="10" fill="#5C6573">oxide</text>
+          <path d="M225 200 L222 214 L232 220 L224 236" stroke="#1B47B8" stroke-width="3" fill="none" stroke-linejoin="round"/>
+          <circle cx="226" cy="218" r="3" fill="#1B47B8"/>
+          <!-- field arrows -->
+          <g stroke="#2F6BFF" stroke-width="2">
+            <line x1="150" y1="110" x2="150" y2="150" marker-end="url(#a)"/>
+            <line x1="190" y1="110" x2="190" y2="150"/>
+            <line x1="300" y1="110" x2="300" y2="150"/>
+          </g>
+          <text x="120" y="270" font-family="Inter,sans-serif" font-size="12" fill="#5C6573">Dielectric ruptures → conductive filament, gate short</text>
+
+          <!-- RIGHT: current / thermal melt -->
+          <text x="880" y="48" text-anchor="end" font-family="Space Grotesk,sans-serif" font-size="17" font-weight="700" fill="#B23E04">OVER-CURRENT</text>
+          <text x="880" y="68" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="11" fill="#5C6573">P = I²R → T &gt; T_melt (Si 1414 °C)</text>
+          <!-- junction with hot filament -->
+          <rect x="580" y="200" width="220" height="50" rx="3" fill="#eef1f5" stroke="#cfd8e6"/>
+          <path d="M690 200 q-14 25 0 50" stroke="#E8590C" stroke-width="6" fill="none" opacity="0.85"/>
+          <path d="M690 200 q-14 25 0 50" stroke="#FFD08A" stroke-width="2" fill="none"/>
+          <text x="600" y="196" font-family="IBM Plex Mono,monospace" font-size="10" fill="#5C6573">N+</text>
+          <text x="760" y="196" font-family="IBM Plex Mono,monospace" font-size="10" fill="#5C6573">P-well</text>
+          <!-- heat squiggles -->
+          <g stroke="#E8590C" stroke-width="2" fill="none" opacity="0.8">
+            <path d="M690 150 q8 -10 0 -20 q-8 -10 0 -20"/>
+            <path d="M710 150 q8 -10 0 -20 q-8 -10 0 -20"/>
+          </g>
+          <text x="800" y="270" text-anchor="end" font-family="Inter,sans-serif" font-size="12" fill="#5C6573">Junction melts → low-ohm filament (2nd breakdown)</text>
+        </svg>
+      </div>
+      <div class="legendbar">
+        <span><i class="d" style="background:var(--volt)"></i> Over-voltage / field-driven channel</span>
+        <span><i class="d" style="background:var(--curr)"></i> Over-current / thermal channel</span>
+        <span><i class="d" style="background:var(--both)"></i> Both (event triggers one, finishes via the other)</span>
+      </div>
+    </div>
+
+    <!-- TOP INDEX (explicit contents) -->
+    <div class="toc">
+      <h2>Contents</h2>
+      <ol>
+        <li><a class="ch" href="#split">The two root causes</a>
+          <ul class="sub"><li><a href="#split">Field vs. heat · governing laws · why both can chain</a></li></ul></li>
+        <li><a class="ch" href="#models">Stress models &amp; delivered current</a>
+          <ul class="sub"><li><a href="#models">HBM · MM · CDM · IEC — peak-current pie &amp; bars</a></li></ul></li>
+        <li><a class="ch" href="#ov">Over-voltage mechanisms</a>
+          <ul class="sub"><li><a href="#ov">Oxide rupture · junction breakdown · clamp overshoot</a></li></ul></li>
+        <li><a class="ch" href="#oc">Over-current mechanisms</a>
+          <ul class="sub"><li><a href="#oc">2nd breakdown · metal/contact fuse · resistor burnout</a></li></ul></li>
+        <li><a class="ch" href="#matrix">Mechanism × model matrix</a>
+          <ul class="sub"><li><a href="#matrix">Which model drives which damage</a></li></ul></li>
+        <li><a class="ch" href="#debug">Signature → debug path</a>
+          <ul class="sub"><li><a href="#debug">Leakage signature to root-cause to next test</a></li></ul></li>
+        <li><a class="ch" href="#sv">Mapping to the SV* pins</a>
+          <ul class="sub"><li><a href="#sv">SVDH / SVTOH spans both channels</a></li></ul></li>
+        <li><a class="ch" href="#refs">Diagrams &amp; references</a>
+          <ul class="sub"><li><a href="#refs">Shared online sources (linked)</a></li></ul></li>
+      </ol>
+    </div>
+
+    <!-- 1. SPLIT -->
+    <section id="split">
+      <div class="kicker">01 — Root cause</div>
+      <h2 class="sec">The two root causes</h2>
+      <p>Strip the acronyms away and there are only two physical destruction channels. They differ in <b>what is exceeded</b> (a critical field vs. a melting temperature) and in <b>which timescale</b> favors them. A well-designed protection network has to win on both: clamp the voltage fast enough <em>and</em> conduct the current with enough robustness.</p>
+      <div class="roots">
+        <div class="root v">
+          <div class="lbl">Channel A — field driven</div>
+          <h3><span class="chip v"><i class="gl"></i>OVER-VOLTAGE</span></h3>
+          <p class="small">The transient voltage across a thin dielectric or a reverse junction exceeds its breakdown field before meaningful current flows. The dielectric ruptures; a conductive filament forms.</p>
+          <span class="law">E = V / d &nbsp;&gt;&nbsp; E_crit  (≈ 6–10 MV/cm for SiO₂)</span>
+          <ul>
+            <li>Wins on <b>fast edges</b> — CDM, IEC first peak — where the clamp cannot turn on in time and voltage overshoots.</li>
+            <li>Damage is local to the thinnest oxide / sharpest junction nearest the pad.</li>
+            <li>Signature: gate leakage, low-ohm gate-to-drain/source short.</li>
+          </ul>
+        </div>
+        <div class="root i">
+          <div class="lbl">Channel B — thermal driven</div>
+          <h3><span class="chip i"><i class="gl"></i>OVER-CURRENT</span></h3>
+          <p class="small">Current is conducted, but I²R heating in a junction, contact, via, or resistor drives local temperature past the melt point. Resistance collapses and a runaway filament shorts the structure.</p>
+          <span class="law">P = I²R → T &gt; T_melt (Si 1414 °C, Al 660 °C)</span>
+          <ul>
+            <li>Wins on <b>high-energy / longer</b> events — HBM, IEC second peak, MM.</li>
+            <li>Quantified per device by the TLP second-breakdown current <b>It2</b>.</li>
+            <li>Signature: junction leakage, fused metal/contact, shifted resistor value.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note">
+        <b>They chain.</b> Over-voltage often <em>initiates</em> and over-current <em>finishes</em>: a field punctures the oxide → a low-ohm path appears → current crowds into it → Joule heating melts a filament. When you debug, decide which channel <em>started</em> the event, because that's the one your design has to defeat.
+      </div>
+    </section>
+
+    <!-- 2. MODELS -->
+    <section id="models">
+      <div class="kicker">02 — Stress models</div>
+      <h2 class="sec">Stress models &amp; delivered current</h2>
+      <p>Each qualification model is just a defined RC source delivering a known charge packet. The headline number is <b>peak current</b>, which sets how hard the over-current channel is pushed, and the <b>rise time</b>, which sets whether the over-voltage channel even gets a chance (a clamp that is fast for HBM can be too slow for CDM/IEC).</p>
+
+      <div class="tablecard">
+        <div class="cap"><span class="t">Peak discharge current by model</span><span class="n">at each model's standard qualification level</span></div>
+        <div class="modelgrid">
+          <!-- PIE -->
+          <div class="piewrap">
+            <div class="pietitle">Share of total peak current</div>
+            <svg id="pie" viewBox="0 0 200 200" aria-label="Pie chart of peak current share by ESD model"></svg>
+            <div class="pielegend" id="pielegend"></div>
+          </div>
+          <!-- TABLE -->
+          <div class="scroll">
+            <table id="modeltable">
+              <thead><tr>
+                <th>Model</th><th>Source network</th><th>Std level</th><th>Rise time</th><th>Peak current</th><th>Channel</th>
+              </tr></thead>
+              <tbody><!-- filled by script; static fallback below --></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <p class="small">Levels differ between models, so this compares <em>relative severity at the level each part is actually qualified to</em> — which is the real design message: a part that survives 2&nbsp;kV HBM can still die at 2&nbsp;kV IEC, because IEC delivers several times the current with a sub-nanosecond edge. MM (200&nbsp;pF, near-zero series R) is largely deprecated by JEDEC but still appears in legacy specs.</p>
+    </section>
+
+    <!-- 3. OVER-VOLTAGE -->
+    <section id="ov">
+      <div class="kicker">03 — <span style="color:var(--volt-ink)">Field channel</span></div>
+      <h2 class="sec">Over-voltage mechanisms <span class="chip v" style="vertical-align:middle"><i class="gl"></i>V</span></h2>
+      <p>All four below are the field winning the race against the clamp. Mitigation is about <b>turn-on speed and clamp voltage margin</b>, not about how much current you can sink.</p>
+      <div class="tablecard">
+        <div class="cap"><span class="t">Field-driven damage</span><span class="n">4 mechanisms</span></div>
+        <div class="scroll"><table>
+          <thead><tr><th>Mechanism</th><th>Physical cause</th><th>Where</th><th>Onset</th><th>Electrical signature</th><th>Worst model</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mech">Gate-oxide rupture</td>
+              <td>Field across thin gate oxide exceeds ~6–10 MV/cm; bonds break, charge traps, a conductive percolation path forms (hard breakdown).</td>
+              <td>Thinnest oxide nearest the pad — pad-connected I/O FET, receiver input.</td>
+              <td class="mono">≈ t_ox × 10 MV/cm<br>(thinner oxide → less margin)</td>
+              <td>Gate leakage step; low-ohm gate-to-drain/source short.</td>
+              <td><span class="chip v"><i class="gl"></i>CDM</span></td>
+            </tr>
+            <tr>
+              <td class="mech">Junction reverse breakdown</td>
+              <td>Reverse-biased junction driven past BV; avalanche multiplication localizes — then usually hands off to the thermal channel.</td>
+              <td>Drain/well junctions, ESD diode reverse leg.</td>
+              <td class="mono">V_rev &gt; BV_junction</td>
+              <td>Elevated reverse leakage; soft then hard.</td>
+              <td><span class="chip b"><i class="gl"></i>CDM/HBM</span></td>
+            </tr>
+            <tr>
+              <td class="mech">Inter-metal / ILD breakdown</td>
+              <td>High potential between adjacent metals or across a cap dielectric punctures the inter-layer dielectric.</td>
+              <td>Tight metal spacing, MIM/MOS caps, crossing buses.</td>
+              <td class="mono">E_ILD &gt; E_crit</td>
+              <td>Metal-to-metal short; cap leakage.</td>
+              <td><span class="chip v"><i class="gl"></i>CDM</span></td>
+            </tr>
+            <tr>
+              <td class="mech">Clamp overshoot / late trigger</td>
+              <td>Protection device's trigger voltage (Vt1) or turn-on delay is too high for the edge; core sees the overshoot. A <em>design</em> failure, not a device weakness.</td>
+              <td>Anywhere downstream of a slow/distant clamp.</td>
+              <td class="mono">Vt1 + L·di/dt &gt; V_core_fail</td>
+              <td>Core damage with the clamp itself intact.</td>
+              <td><span class="chip v"><i class="gl"></i>CDM/IEC</span></td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- 4. OVER-CURRENT -->
+    <section id="oc">
+      <div class="kicker">04 — <span style="color:var(--curr-ink)">Thermal channel</span></div>
+      <h2 class="sec">Over-current mechanisms <span class="chip i" style="vertical-align:middle"><i class="gl"></i>I</span></h2>
+      <p>Here the current is being conducted — the question is whether the path can survive the heat. Mitigation is about <b>It2, ballasting, conductor cross-section, and a low-impedance discharge route</b>.</p>
+      <div class="tablecard">
+        <div class="cap"><span class="t">Thermal-driven damage</span><span class="n">4 mechanisms</span></div>
+        <div class="scroll"><table>
+          <thead><tr><th>Mechanism</th><th>Physical cause</th><th>Where</th><th>Governing relation</th><th>Electrical signature</th><th>Worst model</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mech">2nd breakdown / filamentation</td>
+              <td>I²R heat melts silicon; molten Si resistance drops ~30×, current crowds into the hot spot → thermal runaway filament drain-to-source.</td>
+              <td>Drain junction near surface, gate-drain overlap of the I/O / clamp FET.</td>
+              <td class="mono">I &gt; It2 (TLP)</td>
+              <td>Low-ohm S-D short; junction leakage.</td>
+              <td><span class="chip i"><i class="gl"></i>HBM</span></td>
+            </tr>
+            <tr>
+              <td class="mech">Metal / contact / via fuse</td>
+              <td>Surge through an undersized conductor or via array fuses it open; Al can spike into Si at contacts.</td>
+              <td>Narrow ESD bus, single-via necks, pad routing.</td>
+              <td class="mono">P_fail ∝ t<sup>−1/2</sup> (Wunsch–Bell)</td>
+              <td>Open circuit, or intermittent high-R.</td>
+              <td><span class="chip i"><i class="gl"></i>HBM/MM</span></td>
+            </tr>
+            <tr>
+              <td class="mech">Resistor burnout / shift</td>
+              <td>Ballast, sense, or series resistor overheats — opens or permanently shifts value.</td>
+              <td>Poly/diffusion resistors in series with pads (sense, ballast).</td>
+              <td class="mono">∫I²R dt → T_melt</td>
+              <td>Parametric shift, open, or drift.</td>
+              <td><span class="chip i"><i class="gl"></i>HBM</span></td>
+            </tr>
+            <tr>
+              <td class="mech">Salicide / current-crowding melt</td>
+              <td>Without silicide-block + ballast, current crowds at the silicided drain edge and melts before the device width is used.</td>
+              <td>Silicided drains of I/O / clamp FETs.</td>
+              <td class="mono">non-uniform J → local T_melt</td>
+              <td>Edge filament; low It2.</td>
+              <td><span class="chip i"><i class="gl"></i>HBM</span></td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- 5. MATRIX -->
+    <section id="matrix">
+      <div class="kicker">05 — Cross-reference</div>
+      <h2 class="sec">Which model drives which damage</h2>
+      <p>Susceptibility of each damage mechanism to each stress model. Read it to pick the test that will reproduce a given failure signature.</p>
+      <div class="tablecard">
+        <div class="cap"><span class="t">Mechanism × model susceptibility</span><span class="n">Hi / Med / Lo</span></div>
+        <div class="scroll"><table>
+          <thead><tr><th>Mechanism</th><th>Channel</th><th>HBM</th><th>MM</th><th>CDM</th><th>IEC 61000-4-2</th></tr></thead>
+          <tbody>
+            <tr><td class="mech">Gate-oxide rupture</td><td><span class="chip v"><i class="gl"></i>V</span></td><td><span class="sev lo">Lo</span></td><td><span class="sev md">Med</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev hi">Hi</span></td></tr>
+            <tr><td class="mech">Junction reverse breakdown</td><td><span class="chip b"><i class="gl"></i>V→I</span></td><td><span class="sev md">Med</span></td><td><span class="sev md">Med</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev md">Med</span></td></tr>
+            <tr><td class="mech">Inter-metal / ILD breakdown</td><td><span class="chip v"><i class="gl"></i>V</span></td><td><span class="sev lo">Lo</span></td><td><span class="sev lo">Lo</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev md">Med</span></td></tr>
+            <tr><td class="mech">Clamp overshoot / late trigger</td><td><span class="chip v"><i class="gl"></i>V</span></td><td><span class="sev lo">Lo</span></td><td><span class="sev md">Med</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev hi">Hi</span></td></tr>
+            <tr><td class="mech">2nd breakdown / filamentation</td><td><span class="chip i"><i class="gl"></i>I</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev md">Med</span></td><td><span class="sev hi">Hi</span></td></tr>
+            <tr><td class="mech">Metal / contact / via fuse</td><td><span class="chip i"><i class="gl"></i>I</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev lo">Lo</span></td><td><span class="sev hi">Hi</span></td></tr>
+            <tr><td class="mech">Resistor burnout / shift</td><td><span class="chip i"><i class="gl"></i>I</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev md">Med</span></td><td><span class="sev na">Lo</span></td><td><span class="sev hi">Hi</span></td></tr>
+            <tr><td class="mech">Salicide / crowding melt</td><td><span class="chip i"><i class="gl"></i>I</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev hi">Hi</span></td><td><span class="sev md">Med</span></td><td><span class="sev hi">Hi</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <p class="small">Pattern: the <span style="color:var(--volt-ink)">field channel</span> tracks <b>edge speed</b> (CDM, IEC), the <span style="color:var(--curr-ink)">thermal channel</span> tracks <b>delivered charge / duration</b> (HBM, MM, IEC 2nd peak). CDM is the odd one for metal-fuse — too short to fuse a bus, but lethal to oxide.</p>
+    </section>
+
+    <!-- 6. DEBUG -->
+    <section id="debug">
+      <div class="kicker">06 — Bench workflow</div>
+      <h2 class="sec">Signature → root cause → next test</h2>
+      <p>Start from what the curve tracer / leakage data shows on the failed unit, then converge.</p>
+      <div class="tablecard">
+        <div class="cap"><span class="t">Failure signature decision table</span><span class="n">observe → infer → act</span></div>
+        <div class="scroll"><table>
+          <thead><tr><th>Observed signature</th><th>Likely mechanism</th><th>Channel</th><th>Confirm with</th></tr></thead>
+          <tbody>
+            <tr><td>Gate leakage, low-ohm G–D/G–S short, no S–D damage</td><td>Gate-oxide rupture</td><td><span class="chip v"><i class="gl"></i>V</span></td><td>vf-TLP / CDM; EMMI at gate; check clamp turn-on delay.</td></tr>
+            <tr><td>Low-ohm drain-to-source short, junction leakage</td><td>2nd breakdown / filamentation</td><td><span class="chip i"><i class="gl"></i>I</span></td><td>TLP It2 vs. spec; EMMI/OBIRCH at drain edge.</td></tr>
+            <tr><td>Open or intermittent high-R on a supply/IO trace</td><td>Metal / contact / via fuse</td><td><span class="chip i"><i class="gl"></i>I</span></td><td>X-ray / FIB the bus; extract route R, count vias.</td></tr>
+            <tr><td>Parametric drift in a sense/ballast resistor</td><td>Resistor burnout / shift</td><td><span class="chip i"><i class="gl"></i>I</span></td><td>TLP the pin; inspect poly/diff resistor.</td></tr>
+            <tr><td>Core damaged but clamp device intact</td><td>Clamp overshoot / late trigger / broken discharge path</td><td><span class="chip v"><i class="gl"></i>V</span></td><td>Diff vs. a known-good pin on same clamp; extract series R/L to clamp.</td></tr>
+            <tr><td>Fails only multi-strike (survives 1st zap)</td><td>Latent damage accumulating (IEC ≥10 strikes)</td><td><span class="chip b"><i class="gl"></i>V/I</span></td><td>Repeat-strike TLP; leakage trend per pulse.</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="note i"><b>Always run the diff.</b> Stress a pin you know shares the same clamp and passes, against the failing pin. If the reference passes at the same level, the clamp is fine and your problem is the path <em>to</em> it (series R, floating-well switch, narrow bus) — not the clamp device.</div>
+    </section>
+
+    <!-- 7. SV MAPPING -->
+    <section id="sv">
+      <div class="kicker">07 — Your case</div>
+      <h2 class="sec">Mapping to the SV* pins</h2>
+      <p>From the pin/ESD diagram, the SVID signals sit in two domains, and the high-voltage outputs <span class="mono">SVDH / SVTOH</span> are exposed to <b>both</b> damage channels. That is why a single test rarely tells the whole story here.</p>
+      <div class="svmap">
+        <div class="svcard">
+          <h3><span class="chip v"><i class="gl"></i>Over-voltage risk</span></h3>
+          <div class="pinrow">SVDH · SVTOH gate oxide of HDrive PMOS</div>
+          <p>On a fast edge (CDM, IEC first peak) the main <span class="mono">prgVddioCDG</span> clamp is far across the VDDIO net and may turn on too late. The HDrive PMOS gate/oxide nearest the pad sees the overshoot → <b>oxide rupture</b>. Signature would be gate leakage / low-ohm gate short with the clamp intact.</p>
+          <p class="small">Confirm: vf-TLP / CDM; EMMI at the HDrive gate; measure L·di/dt + R from pad to clamp.</p>
+        </div>
+        <div class="svcard">
+          <h3><span class="chip i"><i class="gl"></i>Over-current risk</span></h3>
+          <div class="pinrow">SVDH · SVTOH discharge path to clamp</div>
+          <p>On HBM, current must reach <span class="mono">prgVddioCDG</span>. If a <span class="mono">prgVddioSwitch</span> 1&nbsp;kΩ leg or the <span class="mono">prgGpioR</span> floating-well switch sits in series, the path is strangled and current crowds into the HDrive drain junction → <b>2nd breakdown</b>. Signature: low-ohm drain short, low It2.</p>
+          <p class="small">Confirm: TLP It2 on SVDH→PGND / →VDDIO both polarities; diff vs. a clean VDDIO pin; OBIRCH the filament.</p>
+        </div>
+      </div>
+      <div class="note"><b>Net takeaway for SV*:</b> qualify these pins on <span class="chip i" style="margin:0 2px"><i class="gl"></i>TLP/HBM</span> <em>and</em> <span class="chip v" style="margin:0 2px"><i class="gl"></i>vf-TLP/CDM</span>. A dedicated dual-diode cell at the pad that <em>bypasses</em> the programmable 1&nbsp;kΩ / floating-well isolation defeats both channels at once — fast local clamp for the field, low-impedance route for the current.
+      </div>
+    </section>
+
+    <!-- 8. REFS -->
+    <section id="refs">
+      <div class="kicker">08 — Sources</div>
+      <h2 class="sec">Diagrams &amp; references</h2>
+      <p>Authoritative, shareable sources for the mechanism figures and waveform diagrams referenced above. Linked rather than copied to respect the publishers' rights — open these for the canonical illustrations.</p>
+      <ul class="refs">
+        <li><span class="tag">Mechanisms</span><span class="src">Identifying EOS and ESD Failures in Semiconductor Devices — oxide rupture &amp; filament figures (Electronic Design)<span class="pub">electronicdesign.com/power-management/article/21799782</span></span></li>
+        <li><span class="tag">Mechanisms</span><span class="src">ESD protection design for I/O libraries in advanced CMOS — three fundamental damage mechanisms, 6–10 MV/cm oxide field, 30× Si melt resistance drop (ScienceDirect)<span class="pub">sciencedirect.com/science/article/abs/pii/S0038110108001664</span></span></li>
+        <li><span class="tag">Waveforms</span><span class="src">HBM vs. IEC 61000-4-2 — side-by-side current waveform comparison (TI app note SLYT492)<span class="pub">ti.com/lit/an/slyt492/slyt492.pdf</span></span></li>
+        <li><span class="tag">Waveforms</span><span class="src">Is ±2 kV HBM enough? — HBM/IEC source networks &amp; peak-current table (Macnica / Semtech)<span class="pub">macnica.co.jp/en/business/semiconductor/articles/semtech/149173</span></span></li>
+        <li><span class="tag">Waveforms</span><span class="src">HBM vs. IEC 61000-4-2 rise-time &amp; clamp turn-on discussion (TI E2E)<span class="pub">e2e.ti.com → interface forum 359524</span></span></li>
+        <li><span class="tag">System ESD</span><span class="src">Applying system-level IEC 61000-4-2 stress on ICs — clamp scaling, VF-TLP (~200 ps) (Monthly Pulse / Sofics)<span class="pub">monthly-pulse.com/2021/06/22/applying-system-level-esd-iec-61000-4-2-stress-on-ics</span></span></li>
+        <li><span class="tag">Standards</span><span class="src">ESD Association — component standards: ANSI/ESDA/JEDEC JS-001 (HBM), JS-002 (CDM)<span class="pub">esda.org · jedec.org</span></span></li>
+        <li><span class="tag">Overview</span><span class="src">Electrostatic discharge — general models &amp; protection overview (Wikipedia)<span class="pub">en.wikipedia.org/wiki/Electrostatic_discharge</span></span></li>
+      </ul>
+      <p class="small" style="margin-top:18px">Numbers in the model table are nominal per the source networks (HBM 100 pF/1.5 kΩ; IEC 150 pF/330 Ω; CDM self-charged, package/size dependent; MM 200 pF/≈0 Ω). Treat CDM peak current as order-of-magnitude — it scales strongly with package and field-plate area.</p>
+    </section>
+
+    <footer>
+      Built for ESD root-cause work on the multiphase-buck / VR controller pin map. Channels: <span style="color:var(--volt)">V = over-voltage / field</span> · <span style="color:var(--curr)">I = over-current / thermal</span>. Links open the original publishers.
+    </footer>
+  </main>
+</div>
+</div>
+
+<script>
+// ---- ESD model data (single source of truth) ----
+const models = [
+  {name:'HBM',  net:'100 pF / 1.5 kΩ',     level:'±2 kV',  rise:'5–10 ns',   peak:1.33, color:'#E8590C', chan:['i','I']},
+  {name:'MM',   net:'200 pF / ≈0 Ω (L-dom)',level:'±200 V', rise:'<10 ns, ring',peak:3.3, color:'#F08C3A', chan:['i','I']},
+  {name:'CDM',  net:'self-charged pkg',     level:'±500 V', rise:'<0.4 ns',   peak:10.0, color:'#2F6BFF', chan:['v','V']},
+  {name:'IEC',  net:'150 pF / 330 Ω',       level:'±8 kV (L4)',rise:'0.7–1 ns',peak:30.0, color:'#7A53D1', chan:['b','V/I']}
+];
+const total = models.reduce((s,m)=>s+m.peak,0);
+const maxPeak = Math.max(...models.map(m=>m.peak));
+
+// ---- table rows with bar viz on the numeric (peak current) column ----
+(function(){
+  const tb = document.querySelector('#modeltable tbody');
+  const chipCls = {v:'v',i:'i','V/I':'b','I':'i','V':'v'};
+  models.forEach(m=>{
+    const w = (m.peak/maxPeak*100).toFixed(1);
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="mech">'+m.name+'</td>'+
+      '<td class="mono">'+m.net+'</td>'+
+      '<td class="mono">'+m.level+'</td>'+
+      '<td class="mono">'+m.rise+'</td>'+
+      '<td><div class="bar"><div class="track"><div class="fill" style="width:'+w+'%;background:'+m.color+'"></div></div>'+
+        '<span class="val">'+m.peak.toFixed(2)+' A</span></div></td>'+
+      '<td><span class="chip '+m.chan[0]+'"><i class="gl"></i>'+m.chan[1]+'</span></td>';
+    tb.appendChild(tr);
+  });
+})();
+
+// ---- pie chart of peak-current share ----
+(function(){
+  const cx=100, cy=100, r=82;
+  let ang = -Math.PI/2; // start at top
+  const ns='http://www.w3.org/2000/svg';
+  const pie = document.getElementById('pie');
+  const leg = document.getElementById('pielegend');
+  models.forEach(m=>{
+    const frac = m.peak/total;
+    const a2 = ang + frac*2*Math.PI;
+    const x1=cx+r*Math.cos(ang), y1=cy+r*Math.sin(ang);
+    const x2=cx+r*Math.cos(a2),  y2=cy+r*Math.sin(a2);
+    const large = frac>0.5?1:0;
+    const path=document.createElementNS(ns,'path');
+    path.setAttribute('d',`M${cx} ${cy} L${x1.toFixed(2)} ${y1.toFixed(2)} A${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`);
+    path.setAttribute('fill',m.color);
+    path.setAttribute('stroke','#fff');
+    path.setAttribute('stroke-width','2');
+    pie.appendChild(path);
+    ang=a2;
+    // legend row
+    const row=document.createElement('div'); row.className='row';
+    row.innerHTML='<span class="lk"><span class="sw" style="background:'+m.color+'"></span>'+m.name+'</span>'+
+                  '<span class="pct">'+(frac*100).toFixed(1)+'%</span>';
+    leg.appendChild(row);
+  });
+  // inner hole for donut feel + total label
+  const hole=document.createElementNS(ns,'circle');
+  hole.setAttribute('cx',cx);hole.setAttribute('cy',cy);hole.setAttribute('r',42);
+  hole.setAttribute('fill','#fff');
+  pie.appendChild(hole);
+  const t1=document.createElementNS(ns,'text');
+  t1.setAttribute('x',cx);t1.setAttribute('y',cy-2);t1.setAttribute('text-anchor','middle');
+  t1.setAttribute('font-family','IBM Plex Mono,monospace');t1.setAttribute('font-size','15');
+  t1.setAttribute('font-weight','600');t1.setAttribute('fill','#12161D');
+  t1.textContent=total.toFixed(1)+' A';
+  pie.appendChild(t1);
+  const t2=document.createElementNS(ns,'text');
+  t2.setAttribute('x',cx);t2.setAttribute('y',cy+14);t2.setAttribute('text-anchor','middle');
+  t2.setAttribute('font-family','IBM Plex Mono,monospace');t2.setAttribute('font-size','8.5');
+  t2.setAttribute('fill','#8A94A3');t2.textContent='SUM OF PEAKS';
+  pie.appendChild(t2);
+})();
+
+// ---- scrollspy for side nav ----
+(function(){
+  const links=[...document.querySelectorAll('nav.side a')];
+  const map={}; links.forEach(l=>map[l.getAttribute('href').slice(1)]=l);
+  const obs=new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      const a=map[e.target.id]; if(a)a.classList.add('active');
+    }});
+  },{rootMargin:'-45% 0px -50% 0px'});
+  document.querySelectorAll('section[id]').forEach(s=>obs.observe(s));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6-Finger NMOS Layout — M1 Resistance Ladder (2 Ω / 4 Ω)</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; background:#FFFFFF; color:#172B4D; margin:0; }
+  .banner { background:#0052CC; color:#fff; padding:18px 28px; }
+  .banner h1 { margin:0; font-size:22px; }
+  .banner p { margin:4px 0 0; font-size:13px; color:#DEEBFF; }
+  .wrap { max-width:1080px; margin:0 auto; padding:20px 28px 60px; }
+  h2 { color:#0052CC; border-bottom:2px solid #DFE1E6; padding-bottom:6px; font-size:18px; margin-top:34px; }
+  .toc { background:#F4F5F7; border:1px solid #DFE1E6; border-radius:6px; padding:14px 22px; margin-top:18px; }
+  .toc b { color:#0052CC; }
+  .toc ul { margin:8px 0 0; padding-left:20px; }
+  .toc li { margin:3px 0; font-size:14px; }
+  .toc a { color:#0052CC; text-decoration:none; }
+  .toc a:hover { text-decoration:underline; }
+  table { border-collapse:collapse; width:100%; margin:14px 0; font-size:13.5px; }
+  th { background:#0052CC; color:#fff; padding:8px 10px; text-align:left; }
+  td { border:1px solid #DFE1E6; padding:7px 10px; }
+  tr:nth-child(even) td { background:#F4F5F7; }
+  .bar { display:inline-block; height:11px; background:#0052CC; border-radius:2px; vertical-align:middle; }
+  .bar.red { background:#DE350B; }
+  .bar.amber { background:#FF991F; }
+  .bar.green { background:#36B37E; }
+  .num-red { color:#DE350B; font-weight:700; }
+  .num-amber { color:#B65C02; font-weight:700; }
+  .num-green { color:#00875A; font-weight:700; }
+  .note { background:#DEEBFF; border-left:4px solid #0052CC; padding:10px 14px; border-radius:0 4px 4px 0; font-size:13.5px; margin:14px 0; }
+  .warn { background:#FFEBE6; border-left:4px solid #DE350B; padding:10px 14px; border-radius:0 4px 4px 0; font-size:13.5px; margin:14px 0; }
+  svg text { font-family:-apple-system,"Segoe UI",Arial,sans-serif; }
+  .figcap { font-size:12.5px; color:#5E6C84; margin-top:6px; font-style:italic; }
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <h1>6-Finger NMOS Layout — Drain M1 Resistance Ladder</h1>
+  <p>Fingers 3,4 = +2 Ω from tap · Fingers 5,6 = +4 Ω from tap · Layer colors per attached legend</p>
+</div>
+
+<div class="wrap">
+
+<div class="toc">
+  <b>Index</b>
+  <ul>
+    <li>1. <a href="#ch1">Layout drawing (top-down view)</a>
+      <ul>
+        <li>1.1 <a href="#ch1">Full 6-finger array with M1 ladder</a></li>
+        <li>1.2 <a href="#legend">Layer legend</a></li>
+      </ul>
+    </li>
+    <li>2. <a href="#ch2">Resistance ladder table &amp; current-share estimate</a></li>
+    <li>3. <a href="#ch3">Reading notes — what the asymmetry does during a zap</a></li>
+  </ul>
+</div>
+
+<h2 id="ch1">1. Layout drawing — top-down view</h2>
+
+<svg viewBox="0 0 1040 640" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff;border:1px solid #DFE1E6;border-radius:6px;">
+
+  <!-- ===================== defs ===================== -->
+  <defs>
+    <pattern id="coPat" width="14" height="14" patternUnits="userSpaceOnUse">
+      <rect x="3" y="3" width="8" height="8" fill="#3E9B4F" stroke="#1E6B2F" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <!-- ===================== NP implant (gray outline) ===================== -->
+  <rect x="88" y="176" width="828" height="188" fill="#F2F2F2" stroke="#8A8A8A" stroke-width="2.5" stroke-dasharray="none"/>
+  <text x="92" y="170" font-size="13" fill="#666">NP</text>
+
+  <!-- ===================== OD active band (salmon) ===================== -->
+  <rect x="104" y="192" width="796" height="156" fill="#F08072" stroke="#C0392B" stroke-width="2"/>
+  <text x="108" y="212" font-size="13" fill="#7B241C" font-weight="bold">OD</text>
+
+  <!-- ===================== PP + OD substrate tap (left, plum) ===================== -->
+  <rect x="20" y="176" width="54" height="188" fill="#EED6F0" stroke="#9B59B6" stroke-width="2.5"/>
+  <rect x="30" y="192" width="34" height="156" fill="#F08072" stroke="#C0392B" stroke-width="1.5"/>
+  <rect x="38" y="200" width="18" height="140" fill="url(#coPat)"/>
+  <text x="24" y="170" font-size="13" fill="#7D3C98">PP</text>
+  <text x="47" y="390" font-size="12" fill="#333" text-anchor="middle">bulk tap</text>
+
+  <!-- ===================== Diffusion stripe layout ======================
+       x-grid: S(120) G1(168) D12(216) G2(264) S(312) G3(408) D34(456) G4(504) S(552) G5(648) D56(696) G6(744) S(792)
+       gate width 30, stripes width 44
+  ====================================================================== -->
+
+  <!-- Source contact columns (CO on S stripes) -->
+  <rect x="122" y="204" width="20" height="132" fill="url(#coPat)"/>
+  <rect x="330" y="204" width="20" height="132" fill="url(#coPat)"/>
+  <rect x="562" y="204" width="20" height="132" fill="url(#coPat)"/>
+  <rect x="794" y="204" width="20" height="132" fill="url(#coPat)"/>
+
+  <!-- Drain contact columns (CO on D stripes) -->
+  <rect x="234" y="204" width="20" height="132" fill="url(#coPat)"/>
+  <rect x="466" y="204" width="20" height="132" fill="url(#coPat)"/>
+  <rect x="698" y="204" width="20" height="132" fill="url(#coPat)"/>
+
+  <!-- ===================== PO gate fingers (blue) ===================== -->
+  <!-- pair 1,2 -->
+  <rect x="168" y="140" width="30" height="256" fill="#4472C4" stroke="#2A4B8D" stroke-width="2"/>
+  <rect x="290" y="140" width="30" height="256" fill="#4472C4" stroke="#2A4B8D" stroke-width="2"/>
+  <!-- pair 3,4 -->
+  <rect x="400" y="140" width="30" height="256" fill="#4472C4" stroke="#2A4B8D" stroke-width="2"/>
+  <rect x="522" y="140" width="30" height="256" fill="#4472C4" stroke="#2A4B8D" stroke-width="2"/>
+  <!-- pair 5,6 -->
+  <rect x="632" y="140" width="30" height="256" fill="#4472C4" stroke="#2A4B8D" stroke-width="2"/>
+  <rect x="754" y="140" width="30" height="256" fill="#4472C4" stroke="#2A4B8D" stroke-width="2"/>
+
+  <!-- finger numbers -->
+  <text x="183" y="132" font-size="14" fill="#2A4B8D" font-weight="bold" text-anchor="middle">1</text>
+  <text x="305" y="132" font-size="14" fill="#2A4B8D" font-weight="bold" text-anchor="middle">2</text>
+  <text x="415" y="132" font-size="14" fill="#2A4B8D" font-weight="bold" text-anchor="middle">3</text>
+  <text x="537" y="132" font-size="14" fill="#2A4B8D" font-weight="bold" text-anchor="middle">4</text>
+  <text x="647" y="132" font-size="14" fill="#2A4B8D" font-weight="bold" text-anchor="middle">5</text>
+  <text x="769" y="132" font-size="14" fill="#2A4B8D" font-weight="bold" text-anchor="middle">6</text>
+
+  <!-- S / D labels inside stripes -->
+  <text x="132" y="286" font-size="13" fill="#7B241C" font-weight="bold" text-anchor="middle">S</text>
+  <text x="244" y="286" font-size="13" fill="#7B241C" font-weight="bold" text-anchor="middle">D₁₂</text>
+  <text x="340" y="286" font-size="13" fill="#7B241C" font-weight="bold" text-anchor="middle">S</text>
+  <text x="476" y="286" font-size="13" fill="#7B241C" font-weight="bold" text-anchor="middle">D₃₄</text>
+  <text x="572" y="286" font-size="13" fill="#7B241C" font-weight="bold" text-anchor="middle">S</text>
+  <text x="708" y="286" font-size="13" fill="#7B241C" font-weight="bold" text-anchor="middle">D₅₆</text>
+  <text x="804" y="286" font-size="13" fill="#7B241C" font-weight="bold" text-anchor="middle">S</text>
+
+  <!-- ===================== M1 source straps + GND rail (light blue) ===================== -->
+  <rect x="20" y="60" width="900" height="34" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <text x="930" y="82" font-size="14" fill="#2E75B6" font-weight="bold">M1 — GND rail</text>
+
+  <rect x="118" y="94" width="28" height="130" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <rect x="326" y="94" width="28" height="130" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <rect x="558" y="94" width="28" height="130" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <rect x="790" y="94" width="28" height="130" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <!-- bulk tap strap to GND -->
+  <rect x="33" y="94" width="28" height="130" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+
+  <!-- ===================== M1 drain stubs + gout bus (light blue) ===================== -->
+  <rect x="230" y="316" width="28" height="150" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <rect x="462" y="316" width="28" height="150" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <rect x="694" y="316" width="28" height="150" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+
+  <!-- gout bus: segment tap→D12 (wide, negligible R) -->
+  <rect x="96" y="466" width="162" height="30" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <!-- segment D12→D34 : narrow = 2 ohm -->
+  <rect x="258" y="472" width="204" height="18" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <!-- segment D34→D56 : narrow = 2 ohm -->
+  <rect x="490" y="472" width="204" height="18" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <!-- stub joints -->
+  <rect x="230" y="460" width="28" height="36" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <rect x="462" y="460" width="28" height="36" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+  <rect x="694" y="460" width="28" height="36" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2"/>
+
+  <!-- resistor zigzags over narrow segments -->
+  <polyline points="300,481 312,469 336,493 360,469 384,493 408,469 420,481" fill="none" stroke="#DE350B" stroke-width="3"/>
+  <polyline points="532,481 544,469 568,493 592,469 616,493 640,469 652,481" fill="none" stroke="#DE350B" stroke-width="3"/>
+
+  <text x="360" y="518" font-size="14" fill="#DE350B" font-weight="bold" text-anchor="middle">R = 2 Ω</text>
+  <text x="592" y="518" font-size="14" fill="#DE350B" font-weight="bold" text-anchor="middle">R = 2 Ω</text>
+
+  <!-- cumulative labels -->
+  <text x="244" y="546" font-size="13" fill="#00875A" font-weight="bold" text-anchor="middle">D₁₂: 0 Ω from tap</text>
+  <text x="476" y="546" font-size="13" fill="#B65C02" font-weight="bold" text-anchor="middle">D₃₄: 2 Ω from tap</text>
+  <text x="708" y="546" font-size="13" fill="#DE350B" font-weight="bold" text-anchor="middle">D₅₆: 2+2 = 4 Ω from tap</text>
+
+  <!-- gout tap -->
+  <rect x="40" y="458" width="56" height="46" fill="#D6EAF8" stroke="#5B9BD5" stroke-width="2.5"/>
+  <text x="68" y="486" font-size="14" fill="#2E75B6" font-weight="bold" text-anchor="middle">gout</text>
+  <text x="68" y="524" font-size="12" fill="#5E6C84" text-anchor="middle">tap / CDM</text>
+  <text x="68" y="538" font-size="12" fill="#5E6C84" text-anchor="middle">arrival point</text>
+
+  <!-- current-flow arrow -->
+  <line x1="120" y1="600" x2="740" y2="600" stroke="#0052CC" stroke-width="2" marker-end="url(#arr)"/>
+  <defs><marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#0052CC"/></marker></defs>
+  <text x="430" y="590" font-size="12.5" fill="#0052CC" text-anchor="middle">zap current entering at gout tap sees increasing series M1 R toward fingers 5,6</text>
+
+</svg>
+<div class="figcap">Fig. 1 — Top-down layout. Three shared-drain pairs (1,2 / 3,4 / 5,6). Drain M1 bus (gout) tapped at left; narrow bus segments add 2 Ω per hop. Sources strapped up to the M1 GND rail; PP/OD bulk tap ring at far left.</div>
+
+<h2 id="legend">1.2 Layer legend</h2>
+<table>
+<tr><th>Layer</th><th>Color</th><th>Use in Fig. 1</th></tr>
+<tr><td><b>M1</b></td><td><span style="display:inline-block;width:34px;height:14px;background:#D6EAF8;border:2px solid #5B9BD5;"></span></td><td>GND rail, source straps, gout drain bus + stubs</td></tr>
+<tr><td><b>CO</b></td><td><span style="display:inline-block;width:34px;height:14px;background:#3E9B4F;border:1px solid #1E6B2F;"></span></td><td>Contact columns on every S/D stripe and bulk tap</td></tr>
+<tr><td><b>PO</b></td><td><span style="display:inline-block;width:34px;height:14px;background:#4472C4;border:2px solid #2A4B8D;"></span></td><td>Gate fingers 1–6</td></tr>
+<tr><td><b>OD</b></td><td><span style="display:inline-block;width:34px;height:14px;background:#F08072;border:2px solid #C0392B;"></span></td><td>Active band (S/D diffusions) + bulk-tap active</td></tr>
+<tr><td><b>NP</b></td><td><span style="display:inline-block;width:34px;height:14px;background:#F2F2F2;border:2px solid #8A8A8A;"></span></td><td>N+ implant enclosing the NMOS active</td></tr>
+<tr><td><b>PP</b></td><td><span style="display:inline-block;width:34px;height:14px;background:#EED6F0;border:2px solid #9B59B6;"></span></td><td>P+ implant for substrate tap ring</td></tr>
+</table>
+
+<h2 id="ch2">2. Resistance ladder &amp; current-share estimate</h2>
+
+<div class="note">Assumes R<sub>RPO</sub> ≈ 8 Ω per finger (from prior sizing). Total per-pair ballast = R<sub>RPO,pair</sub> (≈ 4 Ω per shared-drain pair, two fingers in parallel) + M1 ladder R. Shares computed per pair by conductance ratio.</div>
+
+<table>
+<tr><th>Rank</th><th>🖐️ Pair</th><th>🛣️ M1 R from tap</th><th>🧊 + pair RPO</th><th>Σ R to tap</th><th>⚡ Est. current share</th><th>📊</th></tr>
+<tr><td><b>#1</b></td><td>Fingers 1, 2 (D₁₂)</td><td><span class="num-green">0 Ω</span></td><td>4 Ω</td><td><span class="num-green">4 Ω</span></td><td><span class="num-red">~46%</span></td><td><span class="bar red" style="width:138px"></span></td></tr>
+<tr><td><b>#2</b></td><td>Fingers 3, 4 (D₃₄)</td><td><span class="num-amber">2 Ω</span></td><td>4 Ω</td><td><span class="num-amber">6 Ω</span></td><td><span class="num-amber">~31%</span></td><td><span class="bar amber" style="width:93px"></span></td></tr>
+<tr><td><b>#3</b></td><td>Fingers 5, 6 (D₅₆)</td><td><span class="num-red">4 Ω</span></td><td>4 Ω</td><td><span class="num-red">8 Ω</span></td><td><span class="num-green">~23%</span></td><td><span class="bar green" style="width:69px"></span></td></tr>
+</table>
+
+<h2 id="ch3">3. Reading notes — what the asymmetry does during a zap</h2>
+<div class="warn"><b>Fingers 1,2 are the new green pair.</b> With the gout tap at the left, the M1 ladder steers ~2× the current of pair 5,6 into pair 1,2 (46% vs 23%). The nearest pair to the tap point runs hottest and filaments first — the layout reproduces exactly the mixed-ballast lean case (0 / 2 / 4 Ω on top of ~4 Ω pair RPO ≈ 4/6/8 Ω totals → ~60/40-style lean spread over three rungs).</div>
+<div class="note"><b>Fixes that flatten the ladder:</b> center-tap the gout bus between D₃₄ (drops worst-case to 2 Ω), widen the bus so each hop &lt;0.5 Ω, or fishbone-tap all three drain stubs to a wide trunk. Alternatively exploit it: intentionally shorten RPO on pairs 3–6 by the metal delta so Σ R matches 8 Ω on all rungs.</div>
+
+</div>
+</body>
+</html>
